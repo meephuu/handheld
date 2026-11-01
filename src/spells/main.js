@@ -98,7 +98,7 @@ function updateHud() {
   $("score").textContent = score.toLocaleString();
   const c = $("combo");
   const mult = Math.min(5, combo);
-  const txt = mult > 1 ? `COMBO ×${mult}` : "";
+  const txt = mult > 1 ? `Combo ×${mult}` : "";
   if (txt !== c.textContent) {
     c.textContent = txt;
     if (txt) { c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); }
@@ -124,7 +124,7 @@ window.addEventListener("keydown", (e) => {
 // ---------- Camera / model ----------
 const modelReady = createHandLandmarker()
   .then((l) => { landmarker = l; $("loading").textContent = "The wand is ready ✦"; })
-  .catch((err) => { $("loading").textContent = "Hand model failed to load: " + err.message; });
+  .catch(() => { $("loading").textContent = "Couldn't load hand tracking. Check your internet and reload. You can still draw runes with the mouse or touch."; });
 
 async function ensureCamera() {
   if (cameraOn) return true;
