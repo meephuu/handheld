@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Handheld — games you play with your hands</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <meta name="description" content="Browser games you control with hand gestures through your camera." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/hub/hub.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <a class="logo" href="./" aria-label="Handheld home">
+        <img class="logo-mark" src="logo.svg" alt="" width="32" height="32" />
+        Handheld
+      </a>
+      <p class="privacy">Your camera feed stays on this device</p>
+    </header>
+
+    <section class="hero">
+      <div class="hero-text">
+        <h1>Put your<br />hand up.</h1>
+        <p>Three games you control with gestures in front of your camera. Nothing to install, no controller, no touching the screen.</p>
+        <a class="start" href="spells/">Start with Spell Caster</a>
+      </div>
+      <figure class="hero-hand">
+        <svg id="heroHand" viewBox="-95 -135 165 240" role="img" aria-label="Animated hand-tracking skeleton"></svg>
+        <figcaption>
+          <b id="gestureName">Point</b>
+          <span id="gestureUse">draws a rune in Spell Caster</span>
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="games" aria-label="Games">
+      <a class="game" href="spells/">
+        <svg class="mini" data-pose="point" viewBox="-95 -135 165 240" aria-hidden="true"></svg>
+        <div class="game-text">
+          <h2>Spell Caster <em class="new">New</em></h2>
+          <p>Trace runes in the air to cast fire, lightning, ice and shields at wraiths drifting toward you.</p>
+        </div>
+        <span class="go">Play</span>
+      </a>
+
+      <a class="game" href="air-draw/">
+        <svg class="mini" data-pose="open" viewBox="-95 -135 165 240" aria-hidden="true"></svg>
+        <div class="game-text">
+          <h2>Air Draw</h2>
+          <p>Paint with your fingertip, then wipe the board with an open palm.</p>
+        </div>
+        <span class="go">Play</span>
+      </a>
+
+      <a class="game" href="rps/">
+        <svg class="mini" data-pose="peace" viewBox="-95 -135 165 240" aria-hidden="true"></svg>
+        <div class="game-text">
+          <h2>Rock Paper Scissors</h2>
+          <p>Best of five against the computer. It reads your hand the moment the countdown ends.</p>
+        </div>
+        <span class="go">Play</span>
+      </a>
+    </section>
+
+    <footer>
+      <p>On a phone or iPad, lean it against something about an arm's length away and keep your whole hand in frame.</p>
+    </footer>
+
+    <script type="module" src="/src/hub/hub.js"></script>
+  </body>
+</html>

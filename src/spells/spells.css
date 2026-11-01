@@ -1,0 +1,233 @@
+:root {
+  --gold: #f3d48a;
+  --gold-2: #c9a24d;
+  --ink: #0a0812;
+  --text: #f4ecd8;
+  --muted: rgba(244, 236, 216, 0.6);
+  --glass: rgba(14, 10, 24, 0.55);
+  --line: rgba(243, 212, 138, 0.22);
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 30%, #1a1430, #05040a 70%);
+  color: var(--text);
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none; -webkit-user-select: none;
+  touch-action: none;
+}
+
+/* ---------- Camera + atmosphere ---------- */
+#video {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1) translate(var(--sx, 0px), var(--sy, 0px));
+  filter: brightness(0.42) contrast(1.2) saturate(0.5) sepia(0.35) hue-rotate(195deg);
+  opacity: 0;
+  transition: opacity 1.2s, filter 1.2s;
+}
+body.cam #video { opacity: 1; }
+body.lumos #video { filter: brightness(0.85) contrast(1.1) saturate(0.7) sepia(0.2) hue-rotate(10deg); }
+
+.grade {
+  position: fixed; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(5, 3, 12, 0.88) 100%),
+    linear-gradient(180deg, rgba(40, 20, 80, 0.25), rgba(5, 10, 30, 0.35));
+  transition: opacity 1s;
+}
+body.lumos .grade { opacity: 0.55; }
+
+.fog { position: fixed; inset: -20%; pointer-events: none; mix-blend-mode: screen; opacity: 0.35; }
+.fog i {
+  position: absolute; width: 70%; height: 60%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(120, 110, 170, 0.35), transparent);
+  filter: blur(40px);
+  animation: drift 38s ease-in-out infinite alternate;
+}
+.fog i:nth-child(1) { left: 0; top: 40%; }
+.fog i:nth-child(2) { right: 0; top: 10%; animation-duration: 52s; animation-delay: -12s; }
+.fog i:nth-child(3) { left: 25%; bottom: 0; animation-duration: 44s; animation-delay: -24s; }
+@keyframes drift {
+  from { transform: translate(-8%, 0) scale(1); }
+  to { transform: translate(10%, -6%) scale(1.25); }
+}
+
+#fx { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; }
+
+/* ---------- HUD ---------- */
+.hud {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: start;
+  padding: max(14px, env(safe-area-inset-top)) 16px 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.hud-left, .hud-right { display: flex; align-items: center; gap: 10px; }
+.hud-right { justify-content: flex-end; }
+.hud a, .hud button { pointer-events: auto; }
+.round {
+  width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--glass); border: 1px solid var(--line);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  color: var(--text); cursor: pointer; padding: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+.round:hover { background: rgba(243, 212, 138, 0.15); border-color: var(--gold-2); }
+.round svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#muteBtn .off { display: none; }
+body.muted #muteBtn .on { display: none; }
+body.muted #muteBtn .off { display: block; }
+.title {
+  font-family: "Cinzel", serif; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--gold); text-shadow: 0 0 18px rgba(243, 212, 138, 0.35);
+}
+.hud-center { text-align: center; opacity: 0; transition: opacity 0.4s; }
+body.mode-play .hud-center { opacity: 1; }
+#score {
+  font-family: "Cinzel", serif; font-weight: 900; font-size: clamp(28px, 4vw, 44px);
+  background: linear-gradient(180deg, #fff6d8, var(--gold) 50%, var(--gold-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 14px rgba(243, 212, 138, 0.35));
+  line-height: 1.1;
+}
+#combo {
+  font-family: "Cinzel", serif; font-weight: 700; font-size: 15px; color: #ffb36b;
+  height: 20px; letter-spacing: 0.1em;
+}
+#combo.pop { animation: pop 0.35s; }
+@keyframes pop { 40% { transform: scale(1.35); } }
+
+#lives { display: flex; gap: 6px; opacity: 0; transition: opacity 0.4s; }
+body.mode-play #lives { opacity: 1; }
+#lives i {
+  width: 12px; height: 18px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 50% 70%, #fff6c8, #ffb347 45%, #ff5a1f 80%);
+  box-shadow: 0 0 10px #ff9a3c, 0 0 22px rgba(255, 120, 40, 0.5);
+  animation: flicker 1.4s ease-in-out infinite alternate;
+}
+#lives i:nth-child(2n) { animation-delay: -0.5s; }
+#lives i.gone { background: rgba(255, 255, 255, 0.12); box-shadow: none; animation: none; }
+@keyframes flicker { from { transform: scaleY(1); } to { transform: scaleY(0.88) translateY(1px); } }
+
+/* ---------- Spell banner ---------- */
+#banner {
+  position: fixed; left: 50%; top: 22%;
+  transform: translate(-50%, -50%);
+  font-family: "Cinzel", serif; font-weight: 900;
+  font-size: clamp(34px, 7vw, 84px); letter-spacing: 0.06em;
+  color: #fff; opacity: 0; pointer-events: none; white-space: nowrap;
+  text-shadow: 0 0 12px var(--c, #fff), 0 0 40px var(--c, #fff), 0 0 80px var(--c, #fff);
+  z-index: 6;
+}
+#banner.show { animation: banner 1.5s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes banner {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.35); filter: blur(10px); letter-spacing: 0.35em; }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: blur(0); letter-spacing: 0.06em; }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -60%) scale(0.98); filter: blur(4px); }
+}
+
+#practiceInfo {
+  position: fixed; left: 50%; bottom: 128px; transform: translateX(-50%);
+  text-align: center; color: var(--muted); font-size: 14px;
+  pointer-events: none; display: none; z-index: 5;
+}
+#practiceInfo p { margin: 4px 0; }
+#lastCast { color: var(--gold); font-family: "Cinzel", serif; font-size: 16px; min-height: 22px; }
+body.mode-practice #practiceInfo { display: block; }
+
+/* ---------- Rune dock ---------- */
+#dock {
+  position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex; gap: 6px; padding: 8px;
+  background: var(--glass); border: 1px solid var(--line);
+  border-radius: 18px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  z-index: 5;
+  transition: opacity 0.4s, transform 0.4s;
+}
+body.mode-menu #dock, body.mode-over #dock { opacity: 0.0; pointer-events: none; transform: translate(-50%, 20px); }
+.rune {
+  width: 92px; padding: 8px 4px 6px; border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  color: var(--c); transition: background 0.2s, opacity 0.3s, transform 0.2s;
+}
+.rune svg { filter: drop-shadow(0 0 6px var(--c)); }
+.rune b { font-family: "Cinzel", serif; font-size: 12px; color: var(--text); letter-spacing: 0.04em; }
+.rune small { font-size: 10.5px; color: var(--muted); }
+.rune.locked { opacity: 0.25; filter: grayscale(1); }
+.rune.cast { animation: runeCast 0.6s; }
+@keyframes runeCast { 30% { background: rgba(255, 255, 255, 0.12); transform: translateY(-6px) scale(1.08); } }
+.rune.unlock { animation: unlock 1.4s; }
+@keyframes unlock { 0%, 100% { box-shadow: none; } 30%, 70% { box-shadow: 0 0 0 2px var(--c), 0 0 30px var(--c); } }
+
+/* ---------- Screens (menu, game over) ---------- */
+.screen {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: radial-gradient(ellipse at center, rgba(5, 3, 12, 0.35), rgba(5, 3, 12, 0.75));
+  opacity: 0; pointer-events: none; transition: opacity 0.5s;
+  z-index: 10; padding: 16px;
+}
+.screen.show { opacity: 1; pointer-events: auto; }
+.panel {
+  width: min(560px, 100%); text-align: center;
+  padding: 36px 32px 28px; border-radius: 28px;
+  background: linear-gradient(180deg, rgba(24, 18, 40, 0.7), rgba(10, 8, 18, 0.75));
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+}
+.ornament { display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--gold); font-size: 14px; }
+.ornament span { width: 70px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
+.ornament span:last-child { transform: scaleX(-1); }
+.panel h1, .panel h2 {
+  font-family: "Cinzel", serif; font-weight: 900; margin: 10px 0 6px;
+  background: linear-gradient(180deg, #fff8e0, var(--gold) 55%, var(--gold-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 20px rgba(243, 212, 138, 0.3));
+}
+.panel h1 { font-size: clamp(38px, 8vw, 60px); letter-spacing: 0.04em; }
+.panel h2 { font-size: clamp(26px, 5vw, 36px); }
+.sub { color: var(--muted); line-height: 1.6; margin: 0 0 26px; }
+.actions { display: flex; flex-direction: column; gap: 10px; margin: 0 auto 22px; max-width: 320px; }
+.actions button {
+  font: inherit; font-family: "Cinzel", serif; font-weight: 700; letter-spacing: 0.06em;
+  padding: 14px 20px; border-radius: 14px; cursor: pointer;
+  transition: transform 0.12s, filter 0.2s, background 0.2s;
+}
+.primary {
+  border: none; color: #2a1b05;
+  background: linear-gradient(180deg, #fff1c2, var(--gold) 45%, var(--gold-2));
+  box-shadow: 0 8px 30px rgba(243, 212, 138, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.primary:hover { filter: brightness(1.08); }
+.ghost { background: transparent; color: var(--gold); border: 1px solid var(--line); }
+.ghost:hover { background: rgba(243, 212, 138, 0.08); }
+.actions button:active { transform: scale(0.97); }
+.how {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  font-size: 12.5px; color: var(--muted);
+}
+.how div { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); }
+.how span { font-size: 22px; }
+.loading { margin: 18px 0 0; font-size: 12.5px; color: var(--gold-2); letter-spacing: 0.04em; }
+.final {
+  font-family: "Cinzel", serif; font-weight: 900; font-size: 64px; color: var(--gold);
+  text-shadow: 0 0 30px rgba(243, 212, 138, 0.4); margin: 4px 0 12px;
+}
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 24px; }
+.stats div { padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); display: flex; flex-direction: column; }
+.stats b { font-family: "Cinzel", serif; font-size: 22px; color: var(--text); }
+.stats small { color: var(--muted); font-size: 11.5px; }
+
+@media (max-width: 640px) {
+  .rune { width: 60px; }
+  .rune small { display: none; }
+  .rune b { font-size: 9.5px; }
+  .title { display: none; }
+  #practiceInfo { bottom: 110px; }
+}

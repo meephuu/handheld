@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Spell Caster · Handheld</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/spells/spells.css" />
+  </head>
+  <body>
+    <video id="video" autoplay playsinline muted></video>
+    <div class="grade"></div>
+    <div class="fog"><i></i><i></i><i></i></div>
+    <canvas id="fx"></canvas>
+
+    <!-- HUD -->
+    <header class="hud">
+      <div class="hud-left">
+        <a class="round" href="../" title="Back to Handheld">
+          <svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
+        </a>
+        <span class="title">Spell Caster</span>
+      </div>
+      <div class="hud-center">
+        <div id="score">0</div>
+        <div id="combo"></div>
+      </div>
+      <div class="hud-right">
+        <div id="lives"></div>
+        <button id="muteBtn" class="round" title="Sound (M)">
+          <svg class="on" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M18.5 5.5a9 9 0 0 1 0 13" /></svg>
+          <svg class="off" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z" /><path d="m22 9-6 6" /><path d="m16 9 6 6" /></svg>
+        </button>
+        <button id="exitBtn" class="round" title="Menu (Esc)">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <div id="banner"></div>
+    <div id="practiceInfo">
+      <p>Point ☝️ and draw a rune in the air</p>
+      <p id="lastCast"></p>
+    </div>
+
+    <!-- Rune dock -->
+    <nav id="dock"></nav>
+
+    <!-- Main menu -->
+    <section id="menu" class="screen show">
+      <div class="panel">
+        <div class="ornament"><span></span>✦<span></span></div>
+        <h1>Spell Caster</h1>
+        <p class="sub">Draw runes in the air with your finger.<br />Banish the wraiths before they reach you.</p>
+        <div class="actions">
+          <button id="playBtn" class="primary">Duel the Wraiths</button>
+          <button id="practiceBtn" class="ghost">Practice spells</button>
+        </div>
+        <div class="how">
+          <div><span>☝️</span>Point &amp; draw a rune</div>
+          <div><span>🤏</span>Pinch to press buttons</div>
+          <div><span>✋</span>Hold palm for <i>Lumos</i></div>
+        </div>
+        <p id="loading" class="loading">Summoning the magic…</p>
+      </div>
+    </section>
+
+    <!-- Game over -->
+    <section id="over" class="screen">
+      <div class="panel">
+        <div class="ornament"><span></span>✦<span></span></div>
+        <h2 id="overTitle">The wraiths prevailed</h2>
+        <div class="final" id="finalScore">0</div>
+        <div class="stats">
+          <div><b id="stKills">0</b><small>banished</small></div>
+          <div><b id="stCombo">0</b><small>best combo</small></div>
+          <div><b id="stBest">0</b><small>high score</small></div>
+        </div>
+        <div class="actions">
+          <button id="againBtn" class="primary">Duel again</button>
+          <button id="menuBtn" class="ghost">Menu</button>
+        </div>
+      </div>
+    </section>
+
+    <script type="module" src="/src/spells/main.js"></script>
+  </body>
+</html>

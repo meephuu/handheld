@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Rock Paper Scissors · Handheld</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/rps/rps.css" />
+  </head>
+  <body>
+    <video id="video" autoplay playsinline muted></video>
+    <div class="shade"></div>
+
+    <header class="top">
+      <a class="round" href="../" title="Back to Handheld">
+        <svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
+      </a>
+      <div class="scoreboard">
+        <div class="side"><small>YOU</small><b id="youScore">0</b></div>
+        <div class="pips" id="pips"></div>
+        <div class="side"><small>AI</small><b id="aiScore">0</b></div>
+      </div>
+      <div class="spacer"></div>
+    </header>
+
+    <section class="arena">
+      <div class="card you" id="youCard">
+        <small>YOU</small>
+        <div class="big" id="youHand">·</div>
+        <span id="youLabel">Show your hand</span>
+      </div>
+      <div class="center">
+        <div id="count"></div>
+        <div id="result"></div>
+        <button id="actionBtn" class="cta">Start match</button>
+        <p class="hint" id="hint">Pinch 🤏 the button or click it</p>
+      </div>
+      <div class="card ai" id="aiCard">
+        <small>AI</small>
+        <div class="big" id="aiHand">🤖</div>
+        <span id="aiLabel">Waiting…</span>
+      </div>
+    </section>
+
+    <footer class="legend">
+      <span>✊ Rock</span><span>✋ Paper</span><span>✌️ Scissors</span>
+    </footer>
+
+    <script type="module" src="/src/rps/main.js"></script>
+  </body>
+</html>
