@@ -1,17 +1,24 @@
 :root {
-  --glass: rgba(20, 20, 24, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --text: #f5f5f7;
-  --muted: rgba(245, 245, 247, 0.6);
-  --accent: #3ddc84;
+  /* Handheld design tokens (same as the home page) */
+  --paper: #f5f7ff;
+  --signal: #a98bff;
+  --haze: #a4a7b8;
+  --ink: #0e1660;
+  --line: rgba(245, 247, 255, 0.14);
+  --glass: rgba(0, 0, 0, 0.62);
+  --glass-border: var(--line);
+  --text: var(--paper);
+  --muted: var(--haze);
+  --accent: var(--signal);
 }
 * { box-sizing: border-box; }
 html, body {
   margin: 0; height: 100%; overflow: hidden;
   background: #000; color: var(--text);
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "Instrument Sans", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
 
 /* ---------- Full-screen stage (mirrored like a selfie camera) ---------- */
 #stage {
@@ -40,7 +47,8 @@ html, body {
   pointer-events: none;
 }
 .brand {
-  font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em;
+  font-family: "Schibsted Grotesk", sans-serif; font-weight: 800;
+  font-size: 1.15rem; letter-spacing: -0.02em;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
 }
 .chip {
@@ -101,39 +109,47 @@ html, body {
 .toggle:has(input:not(:checked)) { color: var(--muted); }
 .toggle:has(input:not(:checked)) svg { opacity: 0.5; }
 
-/* ---------- Start screen ---------- */
+/* ---------- Start screen (same look as the home page) ---------- */
 #intro {
   position: fixed; inset: 0;
-  display: grid; place-items: center;
-  background: radial-gradient(circle at 50% 40%, #1c1c22, #000 70%);
+  display: grid; place-items: center; padding: 20px;
+  background:
+    linear-gradient(rgba(245, 247, 255, 0.05) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, rgba(245, 247, 255, 0.05) 1px, transparent 1px) 0 0 / 48px 48px,
+    #000;
   transition: opacity 0.4s;
   z-index: 10;
 }
 #intro.gone { opacity: 0; pointer-events: none; }
-.card {
-  width: min(420px, calc(100vw - 32px));
-  padding: 32px; border-radius: 24px; text-align: center;
+#intro .card {
+  width: min(560px, 100%);
+  padding: 0; text-align: left;
+  background: none; border: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
 }
-.card h1 { margin: 0 0 8px; font-size: 2rem; letter-spacing: -0.02em; }
-.card p { margin: 0 0 24px; color: var(--muted); line-height: 1.5; font-size: 0.95rem; }
-.gestures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+.card h1 {
+  margin: 0; font-family: "Schibsted Grotesk", sans-serif; font-weight: 900;
+  font-size: clamp(52px, 11vw, 104px); line-height: 0.9; letter-spacing: -0.04em;
+}
+.card p { margin: 18px 0 28px; color: var(--muted); line-height: 1.55; font-size: 17px; max-width: 30em; }
+.gestures { display: block; margin-bottom: 28px; border-top: 1px solid var(--line); }
 .gestures div {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 14px; border-radius: 16px;
-  background: rgba(255, 255, 255, 0.05);
+  display: grid; grid-template-columns: 118px 1fr; align-items: center; column-gap: 16px;
+  padding: 14px 0; border-bottom: 1px solid var(--line);
 }
-.gestures span { font-size: 1.5rem; white-space: nowrap; margin-bottom: 4px; }
-.gestures small { color: var(--muted); }
+.gestures span { grid-row: span 2; font-size: 22px; white-space: nowrap; }
+.gestures b { font-family: "Schibsted Grotesk", sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
+.gestures small { color: var(--muted); font-size: 14.5px; }
 #start {
-  width: 100%; padding: 14px; border: none; border-radius: 14px;
-  background: var(--accent); color: #04140a;
-  font: inherit; font-weight: 600; font-size: 1rem;
-  cursor: pointer; transition: transform 0.1s, filter 0.15s;
+  padding: 15px 28px; border: none; border-radius: 999px;
+  background: var(--signal); color: var(--ink);
+  font: inherit; font-weight: 600; font-size: 16px;
+  cursor: pointer; transition: transform 0.15s;
 }
-#start:hover { filter: brightness(1.08); }
-#start:active { transform: scale(0.98); }
+#start:hover { transform: translateY(-2px); }
+#start:active { transform: translateY(0); }
 #start:disabled { opacity: 0.6; cursor: wait; }
-.keys { display: block; margin-top: 14px; color: var(--muted); font-size: 0.75rem; }
+.keys { display: block; margin-top: 18px; color: var(--muted); font-size: 13px; }
 
 /* Not enough room for brand + toolbar in one row: drop toolbar below */
 @media (max-width: 1000px) {
@@ -151,14 +167,14 @@ html, body {
 #mode .eraser-ico { display: none; }
 body.erase #mode .pen-ico { display: none; }
 body.erase #mode .eraser-ico { display: block; }
-body.erase #mode { background: rgba(255, 255, 255, 0.9); color: #111; }
+body.erase #mode { background: var(--signal); color: var(--ink); }
 
 /* ---------- Toast ---------- */
 #toast {
   position: fixed; top: 50%; left: 50%;
   transform: translate(-50%, -50%) scale(0.9);
-  padding: 14px 22px; border-radius: 16px;
-  font-weight: 600; font-size: 1.1rem;
+  padding: 14px 24px; border-radius: 999px;
+  font-family: "Schibsted Grotesk", sans-serif; font-weight: 800; font-size: 1.25rem; letter-spacing: -0.02em;
   opacity: 0; pointer-events: none;
   transition: opacity 0.25s, transform 0.25s;
   z-index: 20;
@@ -199,7 +215,7 @@ body.erase #mode { background: rgba(255, 255, 255, 0.9); color: #111; }
   color: var(--text);
 }
 .home svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.home:hover { background: rgba(255,255,255,.15); }
+.home:hover { background: var(--paper); color: #000; }
 
 /* Status chip (No hand detected / Drawing / …) lives bottom-right */
 #status {
