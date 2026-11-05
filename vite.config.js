@@ -15,6 +15,7 @@ export default defineConfig({
         airDraw: resolve(__dirname, "air-draw/index.html"),
         spells: resolve(__dirname, "spells/index.html"),
         rps: resolve(__dirname, "rps/index.html"),
+        enchanted: resolve(__dirname, "enchanted/index.html"),
       },
     },
   },

@@ -50,26 +50,33 @@ const make21 = ({ minCutoff, beta }) =>
 class SmoothedLandmarker {
   constructor(raw) {
     this.raw = raw;
-    this.f = null; this.wf = null;
+    this.hands = new Map();   // key ("Left"/"Right" or index) -> { f, wf, lastSeen }
     this.last = null; this.lastSeen = -Infinity;
   }
   detectForVideo(video, ts) {
     const r = this.raw.detectForVideo(video, ts);
-    const lm = r.landmarks?.[0];
-    if (lm) {
-      if (!this.f || ts - this.lastSeen > SMOOTHING.resetMs) {
-        this.f = make21(SMOOTHING.screen);
-        this.wf = make21(SMOOTHING.world);
-      }
+    const n = r.landmarks?.length || 0;
+    if (n) {
       const run = (pts, F) => pts.map((p, i) => ({
         x: F[i][0].filter(p.x, ts), y: F[i][1].filter(p.y, ts), z: F[i][2].filter(p.z || 0, ts),
       }));
-      const wl = r.worldLandmarks?.[0];
-      this.last = {
-        landmarks: [run(lm, this.f), ...r.landmarks.slice(1)],
-        worldLandmarks: wl ? [run(wl, this.wf), ...r.worldLandmarks.slice(1)] : [],
-        handedness: r.handedness,
-      };
+      const landmarks = [], worldLandmarks = [], used = new Set();
+      for (let i = 0; i < n; i++) {
+        // Each hand gets its own filters, matched by handedness so two hands never mix
+        let key = r.handedness?.[i]?.[0]?.categoryName ?? String(i);
+        if (used.has(key)) key = key + i;
+        used.add(key);
+        let h = this.hands.get(key);
+        if (!h || ts - h.lastSeen > SMOOTHING.resetMs) {
+          h = { f: make21(SMOOTHING.screen), wf: make21(SMOOTHING.world), lastSeen: ts };
+          this.hands.set(key, h);
+        }
+        h.lastSeen = ts;
+        landmarks.push(run(r.landmarks[i], h.f));
+        const wl = r.worldLandmarks?.[i];
+        worldLandmarks.push(wl ? run(wl, h.wf) : null);
+      }
+      this.last = { landmarks, worldLandmarks: worldLandmarks.every(Boolean) ? worldLandmarks : [], handedness: r.handedness };
       this.lastSeen = ts;
       return this.last;
     }

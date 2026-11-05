@@ -14,7 +14,7 @@ const POSES = {
   open:  { fingers: [0, 0, 0, 0], thumb: 0, name: "Open palm", use: "casts Lumos and wipes the Air Draw board" },
   point: { fingers: [0, 1, 1, 1], thumb: 0.8, name: "Point", use: "draws a rune in Spell Caster" },
   peace: { fingers: [0, 0, 1, 1], thumb: 0.85, name: "Peace", use: "plays scissors in Rock Paper Scissors" },
-  fist:  { fingers: [1, 1, 1, 1], thumb: 1, name: "Fist", use: "plays rock, and casts Nox" },
+  fist:  { fingers: [1, 1, 1, 1], thumb: 1, name: "Fist", use: "charges a burst in Enchanted" },
 };
 
 function landmarks({ fingers, thumb }) {
