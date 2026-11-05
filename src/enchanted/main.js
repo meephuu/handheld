@@ -514,7 +514,9 @@ function drawHud(h) {
   if (!h.palm || h.vis <= 0) return;
   const { x, y } = h.palm;
   const t = clock;
-  const a = 0.85 * h.vis * (1 - 0.6 * h.pinchAmt);
+  // 🤌 pinching: the palm HUD fades out completely, only the fingertip ring stays
+  const a = 0.85 * h.vis * (1 - h.pinchAmt);
+  if (a <= 0.01) return;
   const r = h.size * (0.46 + 0.12 * h.open) * (1 - 0.4 * h.charge);
   ctx.save();
   ctx.strokeStyle = `rgba(245,247,255,${a})`;
