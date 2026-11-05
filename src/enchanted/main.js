@@ -319,6 +319,12 @@ function update(dt) {
     if (!h.palm) continue;
     const speed = Math.hypot(h.vel.x, h.vel.y);
     h.pinchAmt = h.seen && h.pinching ? Math.min(1, h.pinchAmt + dt * 6) : Math.max(0, h.pinchAmt - dt * 4);
+    if (h.seen && h.pinchAmt > 0.3 && h.pinchPt) {
+      for (let i = 0; i < 3; i++) {
+        const a = rand(0, Math.PI * 2), v = rand(60, 220);
+        addSpark({ x: h.pinchPt.x, y: h.pinchPt.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, max: rand(0.2, 0.45), w: rand(1, 2), heat: 0 });
+      }
+    }
     h.phase += dt * (3.4 + h.charge * 7 + h.pinchAmt * 6 + Math.min(4, speed / 400));
     if (!h.seen) continue;
 
@@ -493,9 +499,29 @@ function drawSparks() {
       ctx.drawImage(glowSprite(palette.core), x - g / 2, y - g / 2, g, g);
     }
     if (h.pinchAmt > 0.05 && h.pinchPt) {
-      const g = h.size * 0.7 * h.pinchAmt * (1 + Math.sin(clock * 12) * 0.08);
-      ctx.globalAlpha = 0.6 * h.pinchAmt;
-      ctx.drawImage(glowSprite(palette.core), h.pinchPt.x - g / 2, h.pinchPt.y - g / 2, g, g);
+      // a small star held between the fingertips: wide halo, bright core, white-hot centre
+      const { x, y } = h.pinchPt, k = h.pinchAmt;
+      const beat = 1 + Math.sin(clock * 7) * 0.12 + Math.sin(clock * 19) * 0.05;
+      const halo = h.size * 1.9 * k * beat, core = h.size * 0.9 * k * beat, hot = h.size * 0.38 * k * beat;
+      ctx.globalAlpha = 0.55 * k;
+      ctx.drawImage(glowSprite(palette.deep), x - halo / 2, y - halo / 2, halo, halo);
+      ctx.globalAlpha = 0.95 * k;
+      ctx.drawImage(glowSprite(palette.core), x - core / 2, y - core / 2, core, core);
+      ctx.globalAlpha = k;
+      ctx.drawImage(glowSprite(palette.hot), x - hot / 2, y - hot / 2, hot, hot);
+      ctx.drawImage(glowSprite("255,255,255"), x - hot / 4, y - hot / 4, hot / 2, hot / 2);
+      // thin light rays, slowly turning
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(clock * 0.6);
+      ctx.strokeStyle = `rgba(${palette.hot},${0.38 * k})`;
+      ctx.lineWidth = 1.2;
+      for (let i = 0; i < 4; i++) {
+        const L = h.size * (i % 2 ? 0.36 : 0.6) * k * beat;
+        ctx.rotate(Math.PI / 4);
+        ctx.beginPath(); ctx.moveTo(-L, 0); ctx.lineTo(L, 0); ctx.stroke();
+      }
+      ctx.restore();
     }
     if (h.charge > 0.05) {
       const g = h.size * (0.8 + 2.4 * h.charge) * (1 + Math.sin(clock * 30) * 0.05);
