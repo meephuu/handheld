@@ -110,6 +110,7 @@ function newHand() {
     palm: null, vel: { x: 0, y: 0 }, size: 60, angle: 0, open: 0, vis: 0,
     phase: rand(0, Math.PI * 2), charge: 0, pose: null, filter: new PoseFilter(3),
     tips: [], bends: [0, 0, 0, 0], pinch: 1, seen: true, lastBurst: -10, pulse: 0,
+    pinching: false, pinchAmt: 0, pinchPt: null,
   };
 }
 
@@ -152,11 +153,15 @@ function processHands(res, now) {
     h.bends = fingerBends(lm, VW, VH, world);
     h.pinch = pinchRatio(lm, VW, VH);
     h.pose = h.filter.update(classifyPose(f));
+    const t4 = P(4), t8 = P(8);
+    h.pinchPt = { x: (t4.x + t8.x) / 2, y: (t4.y + t8.y) / 2 };
+    // 🤌 pinched fingers: tips together but the fingers point forward (a fist also brings them close)
+    h.pinching = h.pinch < (h.pinching ? 0.45 : 0.33) && f[0] !== "curl" && h.pose !== "fist";
     const openNow = f.filter((s) => s === "ext").length / 4;
     h.open = lerp(h.open, openNow, 0.3);
 
     // ✊ charge -> ✋ release
-    if (h.pose === "fist") {
+    if (h.pose === "fist" && !h.pinching) {
       h.charge = Math.min(1, h.charge + 1 / 30 / CHARGE_TIME);
     } else if (h.charge > BURST_MIN && h.open > 0.5) {
       burst(h, h.charge);
@@ -165,6 +170,23 @@ function processHands(res, now) {
       h.charge = Math.max(0, h.charge - 0.02);
     }
   }
+}
+
+// Where the spark orbits sit: around the palm, or tight around thumb + index when pinching 🤌
+function orbitFrame(h) {
+  const k = h.pinchAmt;
+  const R0 = h.size * (0.95 + 0.25 * h.open) * (1 - 0.7 * h.charge);
+  const c = h.pinchPt && k > 0 ? { x: lerp(h.palm.x, h.pinchPt.x, k), y: lerp(h.palm.y, h.pinchPt.y, k) } : h.palm;
+  return { cx: c.x, cy: c.y, R: lerp(R0, h.size * 0.34, k), flat: lerp(0.42, 0.85, k), cross: lerp(0.95, 1.25, k) };
+}
+function orbitPoint(h, of, k) {
+  const a = h.phase + k * Math.PI, tilt = h.angle + (k ? of.cross : -of.cross);
+  const lx = Math.cos(a) * of.R, ly = Math.sin(a) * of.R * of.flat;
+  return {
+    a, tilt,
+    x: of.cx + lx * Math.cos(tilt) - ly * Math.sin(tilt),
+    y: of.cy + lx * Math.sin(tilt) + ly * Math.cos(tilt),
+  };
 }
 
 // ---------- Two hands: a tangle of energy flowing between them ----------
@@ -286,24 +308,24 @@ function update(dt) {
     if (!h.seen && h.vis === 0) { hands.delete(key); continue; }
     if (!h.palm) continue;
     const speed = Math.hypot(h.vel.x, h.vel.y);
-    h.phase += dt * (3.4 + h.charge * 7 + Math.min(4, speed / 400));
+    h.pinchAmt = h.seen && h.pinching ? Math.min(1, h.pinchAmt + dt * 6) : Math.max(0, h.pinchAmt - dt * 4);
+    h.phase += dt * (3.4 + h.charge * 7 + h.pinchAmt * 6 + Math.min(4, speed / 400));
     if (!h.seen) continue;
 
     // Two crossing orbits around the palm, like the video's swirls
     // (they fade out while this hand is linked to the other one)
     const orbitAmt = 1 - linkedAmount(h);
-    const R = h.size * (0.95 + 0.25 * h.open) * (1 - 0.7 * h.charge);
+    const of = orbitFrame(h);
+    const R = of.R;
     for (let k = 0; k < 2; k++) {
-      const a = h.phase + k * Math.PI;
-      const tilt = h.angle + (k ? 0.95 : -0.95);
-      const lx = Math.cos(a) * R, ly = Math.sin(a) * R * 0.42;
-      const ex = h.palm.x + lx * Math.cos(tilt) - ly * Math.sin(tilt);
-      const ey = h.palm.y + lx * Math.sin(tilt) + ly * Math.cos(tilt);
-      const tx = -Math.sin(a) * R, ty = Math.cos(a) * R * 0.42;
+      const op = orbitPoint(h, of, k);
+      const a = op.a, tilt = op.tilt;
+      const ex = op.x, ey = op.y;
+      const tx = -Math.sin(a) * R, ty = Math.cos(a) * R * of.flat;
       const tl = Math.hypot(tx, ty) || 1;
       const ux = (tx * Math.cos(tilt) - ty * Math.sin(tilt)) / tl;
       const uy = (tx * Math.sin(tilt) + ty * Math.cos(tilt)) / tl;
-      const count = Math.round((7 + Math.min(12, speed / 110) + h.charge * 8) * orbitAmt);
+      const count = Math.round((7 + Math.min(12, speed / 110) + h.charge * 8 + h.pinchAmt * 4) * orbitAmt);
       for (let i = 0; i < count; i++) {
         const sp = rand(15, 70);
         addSpark({
@@ -453,15 +475,17 @@ function drawSparks() {
   for (const h of hands.values()) {
     if (!h.palm || !h.seen) continue;
     const orbitAmt = 1 - linkedAmount(h);
-    const R = h.size * (0.95 + 0.25 * h.open) * (1 - 0.7 * h.charge);
+    const of = orbitFrame(h);
     for (let k = 0; k < 2; k++) {
-      const a = h.phase + k * Math.PI, tilt = h.angle + (k ? 0.95 : -0.95);
-      const lx = Math.cos(a) * R, ly = Math.sin(a) * R * 0.42;
-      const x = h.palm.x + lx * Math.cos(tilt) - ly * Math.sin(tilt);
-      const y = h.palm.y + lx * Math.sin(tilt) + ly * Math.cos(tilt);
-      const g = h.size * 0.55;
+      const { x, y } = orbitPoint(h, of, k);
+      const g = h.size * lerp(0.55, 0.4, h.pinchAmt);
       ctx.globalAlpha = 0.55 * h.vis * orbitAmt;
       ctx.drawImage(glowSprite(palette.core), x - g / 2, y - g / 2, g, g);
+    }
+    if (h.pinchAmt > 0.05 && h.pinchPt) {
+      const g = h.size * 0.7 * h.pinchAmt * (1 + Math.sin(clock * 12) * 0.08);
+      ctx.globalAlpha = 0.6 * h.pinchAmt;
+      ctx.drawImage(glowSprite(palette.core), h.pinchPt.x - g / 2, h.pinchPt.y - g / 2, g, g);
     }
     if (h.charge > 0.05) {
       const g = h.size * (0.8 + 2.4 * h.charge) * (1 + Math.sin(clock * 30) * 0.05);
@@ -480,7 +504,7 @@ function drawHud(h) {
   if (!h.palm || h.vis <= 0) return;
   const { x, y } = h.palm;
   const t = clock;
-  const a = 0.85 * h.vis;
+  const a = 0.85 * h.vis * (1 - 0.6 * h.pinchAmt);
   const r = h.size * (0.46 + 0.12 * h.open) * (1 - 0.4 * h.charge);
   ctx.save();
   ctx.strokeStyle = `rgba(245,247,255,${a})`;
@@ -527,7 +551,7 @@ function drawHud(h) {
   ctx.beginPath(); ctx.arc(x, y, 2.4, 0, Math.PI * 2); ctx.fill();
 
   // wide open hand: extra faint outer ring
-  if (h.open > 0.7) {
+  if (h.open > 0.7 && h.pinchAmt < 0.3) {
     ctx.globalAlpha = (h.open - 0.7) / 0.3 * 0.35;
     ctx.beginPath(); ctx.arc(x, y, r * 1.75, 0, Math.PI * 2); ctx.stroke();
     ctx.globalAlpha = 1;
@@ -542,7 +566,7 @@ function drawHud(h) {
     const idx = TIPS[i];
     ctx.beginPath(); ctx.arc(p.x, p.y, tr, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2); ctx.fill();
-    if (!LABELLED.has(idx) || h.charge > 0.3) return;
+    if (!LABELLED.has(idx) || h.charge > 0.3 || h.pinchAmt > 0.3) return;
     let dx = p.x - x, dy = p.y - y;
     const L = Math.hypot(dx, dy) || 1;
     dx /= L; dy /= L;
@@ -558,6 +582,22 @@ function drawHud(h) {
     ctx.strokeRect(bx, ly - bh / 2, bw, bh);
     ctx.fillText(text, bx + 5, ly + 0.5);
   });
+  ctx.restore();
+}
+
+function drawPinchHud(h) {
+  if (!h.pinchPt || h.pinchAmt <= 0.02) return;
+  const { x, y } = h.pinchPt, r = h.size * 0.42, a = h.pinchAmt * h.vis;
+  ctx.save();
+  ctx.strokeStyle = `rgba(245,247,255,${0.85 * a})`;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+  for (let i = 0; i < 3; i++) {
+    const st = -clock * 1.6 + (i * Math.PI * 2) / 3;
+    ctx.beginPath(); ctx.arc(x, y, r * 1.3, st, st + 0.9); ctx.stroke();
+  }
+  ctx.setLineDash([2, 4]);
+  ctx.beginPath(); ctx.arc(x, y, r * 0.6, clock * 2, clock * 2 + Math.PI * 2); ctx.stroke();
   ctx.restore();
 }
 
@@ -583,7 +623,7 @@ function render() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawBackground();
   drawSparks();
-  for (const h of hands.values()) drawHud(h);
+  for (const h of hands.values()) { drawHud(h); drawPinchHud(h); }
   drawShocks();
 }
 
@@ -600,6 +640,7 @@ function updateStatus() {
     if (!seen.length) s = "Hold your hand up";
     else if (charging) s = `Charging ${Math.round(charging.charge * 100)}%`;
     else if (link.strength > 0.5) s = "Exchanging sparks";
+    else if (seen.some((h) => h.pinchAmt > 0.5)) s = "Sparks at your fingertips";
     else s = seen.length === 2 ? "Open both hands to exchange sparks" : "Open, move, or make a fist";
   }
   if (s !== lastStatus) { statusEl.textContent = s; lastStatus = s; }
