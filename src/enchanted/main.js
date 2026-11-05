@@ -6,7 +6,7 @@ import {
 import { glowSprite } from "../spells/fx.js";
 
 // ---------- Tuning ----------
-const MAX_SPARKS = 3600;
+const MAX_SPARKS = 4500;
 const CHARGE_TIME = 0.8;        // seconds of fist to fully charge
 const BURST_MIN = 0.3;          // charge needed for opening the hand to release a burst
 const MAX_RECORD_S = 60;
@@ -47,8 +47,8 @@ const hands = new Map();          // key -> hand state
 let sparks = [];                  // { x, y, vx, vy, life, max, w, heat }
 let shocks = [];                  // expanding burst rings
 let carriers = [];                // glowing heads flowing between two hands
-const link = { strength: 0, a: null, b: null, spawnTop: 0, spawnBottom: 0 };
-const LINK_RATE = 16;             // carriers per second on each arc
+const link = { strength: 0, a: null, b: null, spawn: 0 };
+const LINK_RATE = 42;             // strands per second flowing between the hands
 let flash = 0;
 let clock = 0;
 
@@ -167,21 +167,45 @@ function processHands(res, now) {
   }
 }
 
-// ---------- Two hands: sparks flow back and forth ----------
-// Top arc goes left hand -> right hand, bottom arc comes back (a loop, like the sketch)
-function arcPoint(from, to, side, u) {
+// ---------- Two hands: a tangle of energy flowing between them ----------
+// Each strand takes its own random path (S-curves, wiggles, little curls) in either
+// direction, so together they fill the space between the hands like a ball of energy.
+const linkedAmount = (h) => (h === link.a || h === link.b ? link.strength : 0);
+
+function strandPoint(c, u) {
+  const from = c.from, to = c.to;
   const dx = to.palm.x - from.palm.x, dy = to.palm.y - from.palm.y;
   const d = Math.hypot(dx, dy) || 1;
-  const ux = dx / d, uy = dy / d;
-  // normal that points up on screen for the top arc, down for the bottom arc
-  let nx = -uy, ny = ux;
-  if (ny > 0) { nx = -nx; ny = -ny; }
-  nx *= side; ny *= side;
-  const p0 = { x: from.palm.x + ux * from.size * 0.45, y: from.palm.y + uy * from.size * 0.45 };
-  const p2 = { x: to.palm.x - ux * to.size * 0.45, y: to.palm.y - uy * to.size * 0.45 };
-  const c = { x: (p0.x + p2.x) / 2 + nx * d * 0.38, y: (p0.y + p2.y) / 2 + ny * d * 0.38 };
+  const ux = dx / d, uy = dy / d, nx = -uy, ny = ux;
+  const span = Math.max(from.size, to.size);
+  // start/end spread over the palms, not one single point
+  const p0 = { x: from.palm.x + ux * from.size * 0.35 + nx * c.s0 * from.size, y: from.palm.y + uy * from.size * 0.35 + ny * c.s0 * from.size };
+  const p3 = { x: to.palm.x - ux * to.size * 0.35 + nx * c.s1 * to.size, y: to.palm.y - uy * to.size * 0.35 + ny * c.s1 * to.size };
+  const c1 = { x: lerp(p0.x, p3.x, 0.33) + nx * c.o1 * span, y: lerp(p0.y, p3.y, 0.33) + ny * c.o1 * span };
+  const c2 = { x: lerp(p0.x, p3.x, 0.66) + nx * c.o2 * span, y: lerp(p0.y, p3.y, 0.66) + ny * c.o2 * span };
   const v = 1 - u;
-  return { x: v * v * p0.x + 2 * v * u * c.x + u * u * p2.x, y: v * v * p0.y + 2 * v * u * c.y + u * u * p2.y };
+  let x = v * v * v * p0.x + 3 * v * v * u * c1.x + 3 * v * u * u * c2.x + u * u * u * p3.x;
+  let y = v * v * v * p0.y + 3 * v * v * u * c1.y + 3 * v * u * u * c2.y + u * u * u * p3.y;
+  const taper = Math.sin(Math.PI * u);
+  const w = Math.sin(u * Math.PI * 2 * c.freq + c.ph + clock * c.drift) * c.amp * span * taper;
+  x += nx * w; y += ny * w;
+  if (c.curl) {
+    const th = u * Math.PI * 2 * c.turns + c.ph;
+    x += Math.cos(th) * c.curl * span * taper;
+    y += Math.sin(th) * c.curl * span * taper;
+  }
+  return { x, y };
+}
+
+function newCarrier(from, to) {
+  return {
+    from, to, u: 0, dur: rand(0.55, 1.15),
+    s0: rand(-0.45, 0.45), s1: rand(-0.45, 0.45),
+    o1: rand(-2.1, 2.1), o2: rand(-2.1, 2.1),
+    amp: rand(0, 0.35), freq: rand(0.6, 2.4), ph: rand(0, Math.PI * 2), drift: rand(-3, 3),
+    curl: Math.random() < 0.35 ? rand(0.12, 0.3) : 0, turns: rand(1, 3) * (Math.random() < 0.5 ? -1 : 1),
+    x: undefined, y: undefined, trail: [],
+  };
 }
 
 function updateLink(dt) {
@@ -197,10 +221,11 @@ function updateLink(dt) {
   if (A && B) { link.a = A; link.b = B; }
 
   if (link.strength > 0.05 && link.a?.seen && link.b?.seen) {
-    link.spawnTop += dt * LINK_RATE * link.strength;
-    link.spawnBottom += dt * LINK_RATE * link.strength;
-    while (link.spawnTop >= 1) { link.spawnTop--; carriers.push(newCarrier(link.a, link.b, 1)); }
-    while (link.spawnBottom >= 1) { link.spawnBottom--; carriers.push(newCarrier(link.b, link.a, -1)); }
+    link.spawn += dt * LINK_RATE * link.strength;
+    while (link.spawn >= 1) {
+      link.spawn--;
+      carriers.push(Math.random() < 0.5 ? newCarrier(link.a, link.b) : newCarrier(link.b, link.a));
+    }
   }
 
   for (const c of carriers) {
@@ -211,12 +236,13 @@ function updateLink(dt) {
       continue;
     }
     c.u += dt / c.dur;
-    const wob = Math.sin(clock * 9 + c.seed) * c.from.size * 0.07;
-    const p = arcPoint(c.from, c.to, c.side, Math.min(1, c.u));
+    const p = strandPoint(c, Math.min(1, c.u));
     const px = c.x ?? p.x, py = c.y ?? p.y;
-    c.x = p.x + wob * c.side * 0.5; c.y = p.y + wob;
-    // trail: sparks left behind along the arc
-    const n = 3;
+    c.x = p.x; c.y = p.y;
+    c.trail.push({ x: c.x, y: c.y });
+    if (c.trail.length > 16) c.trail.shift();
+    // a few sparks shed along the strand
+    const n = 1;
     for (let i = 0; i < n; i++) {
       const k = i / n;
       addSpark({
@@ -237,9 +263,6 @@ function updateLink(dt) {
   for (const h of hands.values()) h.pulse = Math.max(0, h.pulse - dt * 2.5);
 }
 
-function newCarrier(from, to, side) {
-  return { from, to, side, u: 0, dur: rand(0.7, 1.0), seed: rand(0, 100), x: undefined, y: undefined };
-}
 
 function burst(h, power) {
   const { x, y } = h.palm;
@@ -267,6 +290,8 @@ function update(dt) {
     if (!h.seen) continue;
 
     // Two crossing orbits around the palm, like the video's swirls
+    // (they fade out while this hand is linked to the other one)
+    const orbitAmt = 1 - linkedAmount(h);
     const R = h.size * (0.95 + 0.25 * h.open) * (1 - 0.7 * h.charge);
     for (let k = 0; k < 2; k++) {
       const a = h.phase + k * Math.PI;
@@ -278,7 +303,7 @@ function update(dt) {
       const tl = Math.hypot(tx, ty) || 1;
       const ux = (tx * Math.cos(tilt) - ty * Math.sin(tilt)) / tl;
       const uy = (tx * Math.sin(tilt) + ty * Math.cos(tilt)) / tl;
-      const count = Math.round(7 + Math.min(12, speed / 110) + h.charge * 8);
+      const count = Math.round((7 + Math.min(12, speed / 110) + h.charge * 8) * orbitAmt);
       for (let i = 0; i < count; i++) {
         const sp = rand(15, 70);
         addSpark({
@@ -374,10 +399,44 @@ function drawSparks() {
     ctx.drawImage(haze, s.x - g / 2, s.y - g / 2, g, g);
   }
   ctx.globalAlpha = 1;
-  // flowing carriers between the hands
+  // soft energy field filling the space between linked hands
+  if (link.strength > 0.02 && link.a?.palm && link.b?.palm) {
+    const A = link.a.palm, B = link.b.palm;
+    const d = dist(A, B), span = Math.max(link.a.size, link.b.size);
+    ctx.save();
+    ctx.translate((A.x + B.x) / 2, (A.y + B.y) / 2);
+    ctx.rotate(Math.atan2(B.y - A.y, B.x - A.x));
+    const fw = d * 0.95, fh = span * 3 * (1 + Math.sin(clock * 3) * 0.04);
+    ctx.globalAlpha = 0.22 * link.strength;
+    ctx.drawImage(glowSprite(palette.deep), -fw / 2, -fh / 2, fw, fh);
+    ctx.globalAlpha = 0.12 * link.strength;
+    ctx.drawImage(glowSprite(palette.core), -fw / 4, -fh / 4, fw / 2, fh / 2);
+    ctx.restore();
+  }
+  // strands: each one a continuous glowing line with a tail, so together they read as tangled energy
+  if (carriers.length) {
+    const tail = new Path2D(), body = new Path2D();
+    for (const c of carriers) {
+      const t = c.trail;
+      if (t.length < 2) continue;
+      const mid = Math.floor(t.length / 2);
+      tail.moveTo(t[0].x, t[0].y);
+      for (let i = 1; i <= mid; i++) tail.lineTo(t[i].x, t[i].y);
+      body.moveTo(t[mid].x, t[mid].y);
+      for (let i = mid + 1; i < t.length; i++) body.lineTo(t[i].x, t[i].y);
+    }
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.globalAlpha = link.strength;
+    ctx.strokeStyle = `rgba(${palette.deep},0.22)`; ctx.lineWidth = 7; ctx.stroke(body);
+    ctx.strokeStyle = `rgba(${palette.core},0.35)`; ctx.lineWidth = 1.4; ctx.stroke(tail);
+    ctx.strokeStyle = `rgba(${palette.core},0.55)`; ctx.lineWidth = 2.6; ctx.stroke(body);
+    ctx.strokeStyle = `rgba(${palette.hot},0.95)`; ctx.lineWidth = 1.1; ctx.stroke(body);
+    ctx.globalAlpha = 1;
+  }
+  // strand heads
   for (const c of carriers) {
     if (c.x === undefined) continue;
-    const g = (c.from.size * 0.38) * (0.8 + 0.4 * Math.sin(c.u * Math.PI));
+    const g = (c.from.size * 0.18) * (0.7 + 0.5 * Math.sin(c.u * Math.PI));
     ctx.globalAlpha = 0.8 * link.strength + 0.2;
     ctx.drawImage(glowSprite(palette.core), c.x - g / 2, c.y - g / 2, g, g);
     ctx.globalAlpha = 0.9;
@@ -393,6 +452,7 @@ function drawSparks() {
   // soft bloom on the orbit heads and the charge ball
   for (const h of hands.values()) {
     if (!h.palm || !h.seen) continue;
+    const orbitAmt = 1 - linkedAmount(h);
     const R = h.size * (0.95 + 0.25 * h.open) * (1 - 0.7 * h.charge);
     for (let k = 0; k < 2; k++) {
       const a = h.phase + k * Math.PI, tilt = h.angle + (k ? 0.95 : -0.95);
@@ -400,7 +460,7 @@ function drawSparks() {
       const x = h.palm.x + lx * Math.cos(tilt) - ly * Math.sin(tilt);
       const y = h.palm.y + lx * Math.sin(tilt) + ly * Math.cos(tilt);
       const g = h.size * 0.55;
-      ctx.globalAlpha = 0.55 * h.vis;
+      ctx.globalAlpha = 0.55 * h.vis * orbitAmt;
       ctx.drawImage(glowSprite(palette.core), x - g / 2, y - g / 2, g, g);
     }
     if (h.charge > 0.05) {
@@ -501,24 +561,6 @@ function drawHud(h) {
   ctx.restore();
 }
 
-function drawLinkHud() {
-  if (link.strength <= 0.02 || !link.a?.palm || !link.b?.palm) return;
-  ctx.save();
-  ctx.strokeStyle = `rgba(245,247,255,${0.3 * link.strength})`;
-  ctx.lineWidth = 1.1;
-  ctx.setLineDash([2, 7]);
-  ctx.lineDashOffset = -clock * 30;
-  for (const [from, to, side] of [[link.a, link.b, 1], [link.b, link.a, -1]]) {
-    ctx.beginPath();
-    for (let i = 0; i <= 30; i++) {
-      const p = arcPoint(from, to, side, i / 30);
-      i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
-    }
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
 function drawShocks() {
   ctx.save();
   ctx.lineWidth = 1.4;
@@ -541,7 +583,6 @@ function render() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawBackground();
   drawSparks();
-  drawLinkHud();
   for (const h of hands.values()) drawHud(h);
   drawShocks();
 }
