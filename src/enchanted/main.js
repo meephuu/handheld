@@ -46,6 +46,9 @@ let palette = PALETTES.gold, paletteName = "gold";
 const hands = new Map();          // key -> hand state
 let sparks = [];                  // { x, y, vx, vy, life, max, w, heat }
 let shocks = [];                  // expanding burst rings
+let carriers = [];                // glowing heads flowing between two hands
+const link = { strength: 0, a: null, b: null, spawnTop: 0, spawnBottom: 0 };
+const LINK_RATE = 16;             // carriers per second on each arc
 let flash = 0;
 let clock = 0;
 
@@ -106,7 +109,7 @@ function newHand() {
   return {
     palm: null, vel: { x: 0, y: 0 }, size: 60, angle: 0, open: 0, vis: 0,
     phase: rand(0, Math.PI * 2), charge: 0, pose: null, filter: new PoseFilter(3),
-    tips: [], bends: [0, 0, 0, 0], pinch: 1, seen: true, lastBurst: -10,
+    tips: [], bends: [0, 0, 0, 0], pinch: 1, seen: true, lastBurst: -10, pulse: 0,
   };
 }
 
@@ -162,6 +165,80 @@ function processHands(res, now) {
       h.charge = Math.max(0, h.charge - 0.02);
     }
   }
+}
+
+// ---------- Two hands: sparks flow back and forth ----------
+// Top arc goes left hand -> right hand, bottom arc comes back (a loop, like the sketch)
+function arcPoint(from, to, side, u) {
+  const dx = to.palm.x - from.palm.x, dy = to.palm.y - from.palm.y;
+  const d = Math.hypot(dx, dy) || 1;
+  const ux = dx / d, uy = dy / d;
+  // normal that points up on screen for the top arc, down for the bottom arc
+  let nx = -uy, ny = ux;
+  if (ny > 0) { nx = -nx; ny = -ny; }
+  nx *= side; ny *= side;
+  const p0 = { x: from.palm.x + ux * from.size * 0.45, y: from.palm.y + uy * from.size * 0.45 };
+  const p2 = { x: to.palm.x - ux * to.size * 0.45, y: to.palm.y - uy * to.size * 0.45 };
+  const c = { x: (p0.x + p2.x) / 2 + nx * d * 0.38, y: (p0.y + p2.y) / 2 + ny * d * 0.38 };
+  const v = 1 - u;
+  return { x: v * v * p0.x + 2 * v * u * c.x + u * u * p2.x, y: v * v * p0.y + 2 * v * u * c.y + u * u * p2.y };
+}
+
+function updateLink(dt) {
+  const seen = [...hands.values()].filter((h) => h.seen && h.palm);
+  let want = 0, A = null, B = null;
+  if (seen.length === 2) {
+    [A, B] = seen[0].palm.x <= seen[1].palm.x ? seen : [seen[1], seen[0]];   // A = left on screen
+    const d = dist(A.palm, B.palm);
+    const ok = A.open > 0.5 && B.open > 0.5 && A.charge < 0.2 && B.charge < 0.2 && d > (A.size + B.size) * 0.9;
+    want = ok ? 1 : 0;
+  }
+  link.strength = want ? Math.min(1, link.strength + dt * 2.5) : Math.max(0, link.strength - dt * 3);
+  if (A && B) { link.a = A; link.b = B; }
+
+  if (link.strength > 0.05 && link.a?.seen && link.b?.seen) {
+    link.spawnTop += dt * LINK_RATE * link.strength;
+    link.spawnBottom += dt * LINK_RATE * link.strength;
+    while (link.spawnTop >= 1) { link.spawnTop--; carriers.push(newCarrier(link.a, link.b, 1)); }
+    while (link.spawnBottom >= 1) { link.spawnBottom--; carriers.push(newCarrier(link.b, link.a, -1)); }
+  }
+
+  for (const c of carriers) {
+    if (!c.from.seen || !c.to.seen || !c.from.palm || !c.to.palm) {
+      // a hand left: the carrier fizzles out where it is
+      for (let i = 0; i < 6; i++) addSpark({ x: c.x, y: c.y, vx: rand(-80, 80), vy: rand(-80, 80), max: rand(0.3, 0.6), w: rand(1, 2), heat: 0.3 });
+      c.dead = true;
+      continue;
+    }
+    c.u += dt / c.dur;
+    const wob = Math.sin(clock * 9 + c.seed) * c.from.size * 0.07;
+    const p = arcPoint(c.from, c.to, c.side, Math.min(1, c.u));
+    const px = c.x ?? p.x, py = c.y ?? p.y;
+    c.x = p.x + wob * c.side * 0.5; c.y = p.y + wob;
+    // trail: sparks left behind along the arc
+    const n = 3;
+    for (let i = 0; i < n; i++) {
+      const k = i / n;
+      addSpark({
+        x: lerp(px, c.x, k) + rand(-2, 2), y: lerp(py, c.y, k) + rand(-2, 2),
+        vx: rand(-25, 25), vy: rand(-25, 25), max: rand(0.25, 0.55), w: rand(1, 2.2), heat: rand(0, 0.3),
+      });
+    }
+    if (c.u >= 1) {
+      c.dead = true;
+      c.to.pulse = Math.min(1, c.to.pulse + 0.25);
+      for (let i = 0; i < 8; i++) {
+        const a = rand(0, Math.PI * 2), v = rand(40, 160);
+        addSpark({ x: c.x, y: c.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, max: rand(0.25, 0.5), w: rand(1, 2), heat: 0 });
+      }
+    }
+  }
+  carriers = carriers.filter((c) => !c.dead);
+  for (const h of hands.values()) h.pulse = Math.max(0, h.pulse - dt * 2.5);
+}
+
+function newCarrier(from, to, side) {
+  return { from, to, side, u: 0, dur: rand(0.7, 1.0), seed: rand(0, 100), x: undefined, y: undefined };
 }
 
 function burst(h, power) {
@@ -223,6 +300,8 @@ function update(dt) {
       }
     }
   }
+
+  updateLink(dt);
 
   const drag = Math.pow(0.12, dt);
   for (const s of sparks) {
@@ -293,6 +372,22 @@ function drawSparks() {
     const g = s.w * 9;
     ctx.globalAlpha = 0.2 * (1 - s.life / 0.45);
     ctx.drawImage(haze, s.x - g / 2, s.y - g / 2, g, g);
+  }
+  ctx.globalAlpha = 1;
+  // flowing carriers between the hands
+  for (const c of carriers) {
+    if (c.x === undefined) continue;
+    const g = (c.from.size * 0.38) * (0.8 + 0.4 * Math.sin(c.u * Math.PI));
+    ctx.globalAlpha = 0.8 * link.strength + 0.2;
+    ctx.drawImage(glowSprite(palette.core), c.x - g / 2, c.y - g / 2, g, g);
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(glowSprite(palette.hot), c.x - g / 6, c.y - g / 6, g / 3, g / 3);
+  }
+  for (const h of hands.values()) {
+    if (!h.palm || h.pulse <= 0) continue;
+    const g = h.size * (1.4 + h.pulse);
+    ctx.globalAlpha = 0.45 * h.pulse;
+    ctx.drawImage(glowSprite(palette.core), h.palm.x - g / 2, h.palm.y - g / 2, g, g);
   }
   ctx.globalAlpha = 1;
   // soft bloom on the orbit heads and the charge ball
@@ -406,6 +501,24 @@ function drawHud(h) {
   ctx.restore();
 }
 
+function drawLinkHud() {
+  if (link.strength <= 0.02 || !link.a?.palm || !link.b?.palm) return;
+  ctx.save();
+  ctx.strokeStyle = `rgba(245,247,255,${0.3 * link.strength})`;
+  ctx.lineWidth = 1.1;
+  ctx.setLineDash([2, 7]);
+  ctx.lineDashOffset = -clock * 30;
+  for (const [from, to, side] of [[link.a, link.b, 1], [link.b, link.a, -1]]) {
+    ctx.beginPath();
+    for (let i = 0; i <= 30; i++) {
+      const p = arcPoint(from, to, side, i / 30);
+      i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawShocks() {
   ctx.save();
   ctx.lineWidth = 1.4;
@@ -428,6 +541,7 @@ function render() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawBackground();
   drawSparks();
+  drawLinkHud();
   for (const h of hands.values()) drawHud(h);
   drawShocks();
 }
@@ -444,7 +558,8 @@ function updateStatus() {
     const charging = seen.find((h) => h.charge > 0.05);
     if (!seen.length) s = "Hold your hand up";
     else if (charging) s = `Charging ${Math.round(charging.charge * 100)}%`;
-    else s = seen.length === 2 ? "Two hands" : "Open, move, or make a fist";
+    else if (link.strength > 0.5) s = "Exchanging sparks";
+    else s = seen.length === 2 ? "Open both hands to exchange sparks" : "Open, move, or make a fist";
   }
   if (s !== lastStatus) { statusEl.textContent = s; lastStatus = s; }
 }

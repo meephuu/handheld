@@ -20,7 +20,7 @@ npm run dev
 
 | Game | Path | Gestures |
 | --- | --- | --- |
-| **Enchanted** | `/enchanted/` | ✋ sparks orbit your palm · 👋 move to trail sparks · ✊ then ✋ to burst · R records a clip |
+| **Enchanted** | `/enchanted/` | ✋ sparks orbit your palm · 👋 move to trail sparks · ✊ then ✋ to burst · two open hands exchange sparks · R records a clip |
 | **Spell Caster** | `/spells/` | ☝️ draw runes · ✋ hold for Lumos · ✊ Nox · 🤏 menus |
 | **Air Draw** | `/air-draw/` | ☝️ draw · ✋✊✋✊ eraser mode · ✋ swipe to erase · 🤏 click |
 | **Rock Paper Scissors** | `/rps/` | ✊ ✋ ✌️ · 🤏 buttons |
