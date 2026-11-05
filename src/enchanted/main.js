@@ -41,7 +41,7 @@ resize();
 window.addEventListener("resize", resize);
 
 // ---------- State ----------
-let landmarker = null, modelFailed = false, cameraOn = false, showCam = true, lastVideoTime = -1;
+let landmarker = null, modelFailed = false, cameraOn = false, showCam = true, showHud = true, lastVideoTime = -1;
 let palette = PALETTES.gold, paletteName = "gold";
 const hands = new Map();          // key -> hand state
 let sparks = [];                  // { x, y, vx, vy, life, max, w, heat }
@@ -74,6 +74,15 @@ function setPalette(name) {
   [...colorsEl.children].forEach((b, i) => b.setAttribute("aria-pressed", String(Object.keys(PALETTES)[i] === name)));
   try { localStorage.setItem("handheld.enchanted.color", name); } catch {}
 }
+function setHud(on) {
+  showHud = on;
+  $("hudBtn").setAttribute("aria-pressed", String(on));
+  $("hudBtn").title = on ? "Hide sci-fi rings (U)" : "Show sci-fi rings (U)";
+  try { localStorage.setItem("handheld.enchanted.hud", on ? "1" : "0"); } catch {}
+}
+try { if (localStorage.getItem("handheld.enchanted.hud") === "0") setHud(false); } catch {}
+$("hudBtn").onclick = () => setHud(!showHud);
+
 function toggleCam() {
   showCam = !showCam;
   $("camBtn").setAttribute("aria-pressed", String(showCam));
@@ -89,6 +98,7 @@ window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   if (k === "r") toggleRecording();
   if (k === "h") toggleCam();
+  if (k === "u") setHud(!showHud);
   if (k === "f") toggleFullscreen();
   const n = Number(k);
   if (n >= 1 && n <= 4) setPalette(Object.keys(PALETTES)[n - 1]);
@@ -604,7 +614,7 @@ function drawPinchHud(h) {
 function drawShocks() {
   ctx.save();
   ctx.lineWidth = 1.4;
-  for (const s of shocks) {
+  for (const s of showHud ? shocks : []) {
     if (s.t < 0) continue;
     const k = s.t / s.dur, e = 1 - Math.pow(1 - k, 3);
     ctx.strokeStyle = `rgba(245,247,255,${(1 - k) * 0.85})`;
@@ -623,7 +633,7 @@ function render() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawBackground();
   drawSparks();
-  for (const h of hands.values()) { drawHud(h); drawPinchHud(h); }
+  if (showHud) for (const h of hands.values()) { drawHud(h); drawPinchHud(h); }
   drawShocks();
 }
 
