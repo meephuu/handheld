@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Finger Ninja · Handheld</title>
+    <link rel="icon" type="image/png" href="../favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@700;800;900&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/ninja/ninja.css" />
+  </head>
+  <body>
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="game"></canvas>
+
+    <header class="top">
+      <a class="round" href="../" title="Back to Handheld">
+        <svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
+      </a>
+      <div class="score"><b id="score">0</b><small id="best">Best 0</small></div>
+      <div id="lives" class="lives" aria-label="Lives"></div>
+    </header>
+    <div id="status" class="chip">Loading hand tracking…</div>
+
+    <section id="intro">
+      <div class="card">
+        <h1>Finger Ninja</h1>
+        <p>Your index finger is the blade. Swipe fast through the fruit before it falls, and never touch a bomb.</p>
+        <div class="rows">
+          <div><span>☝️</span><b>Swipe fast</b><small>slow moves don't cut</small></div>
+          <div><span>🍉🍊</span><b>Slice several at once</b><small>for a combo bonus</small></div>
+          <div><span>💣</span><b>Avoid bombs</b><small>one touch ends the game</small></div>
+        </div>
+        <button id="startBtn">Start camera</button>
+        <small class="note">No camera? Swipe with your mouse or finger on the screen.</small>
+      </div>
+    </section>
+
+    <script type="module" src="/src/ninja/main.js"></script>
+  </body>
+</html>

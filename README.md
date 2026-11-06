@@ -20,6 +20,7 @@ npm run dev
 
 | Game | Path | Gestures |
 | --- | --- | --- |
+| **Finger Ninja** | `/ninja/` | ☝️ swipe fast to slice fruit · avoid 💣 · slice the 🍉 to start |
 | **Enchanted** | `/enchanted/` | ✋ sparks orbit your palm · 👋 move to trail sparks · ✊ then ✋ to burst · 🤌 pinch to swirl sparks at your fingertips · two open hands exchange sparks · R records a clip · U hides the sci-fi rings |
 | **Spell Caster** | `/spells/` | ☝️ draw runes · ✋ hold for Lumos · ✊ Nox · 🤏 menus |
 | **Air Draw** | `/air-draw/` | ☝️ draw · ✋✊✋✊ eraser mode · ✋ swipe to erase · 🤏 click |

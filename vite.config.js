@@ -16,6 +16,7 @@ export default defineConfig({
         spells: resolve(__dirname, "spells/index.html"),
         rps: resolve(__dirname, "rps/index.html"),
         enchanted: resolve(__dirname, "enchanted/index.html"),
+        ninja: resolve(__dirname, "ninja/index.html"),
       },
     },
   },
